@@ -1,0 +1,154 @@
+//+------------------------------------------------------------------+
+//|                                               volume_request.mq5 |
+//|                                                     Trinity Tech |
+//|                                             https://trinity.tech |
+//+------------------------------------------------------------------+
+#include <JAson.mqh>
+
+#property copyright "Trinity Tech"
+#property link      "https://trinity.tech"
+#property version   "1.00"
+//--- input parameters
+input string   URL = "http://127.0.0.1/volume";
+input int      PERIOD = 15;
+input string   TV_SYMBOL = "NDX";
+//--- variables
+const string GLOBAL_VOLUME_VARNAME = "_g_volume";
+datetime lastBarTime = 0;
+int lastRequestSecond = -1; // For tracking last second when a request was done
+int timezoneDiff = 3;
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+int OnInit()
+  {
+//--- create timer
+   EventSetTimer(60);
+
+// Init the global volume variable
+   GlobalVariableSet(GLOBAL_VOLUME_VARNAME, 0);
+
+   Print("Period: ", _Period);
+   Print("Getting volume from: ", URL);
+
+//---
+   return(INIT_SUCCEEDED);
+  }
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick()
+  {
+
+// Struct for handling requests time sync
+   MqlDateTime lastTimeStruct;
+   TimeToStruct(TimeCurrent(), lastTimeStruct);
+
+   int currentSecond = lastTimeStruct.sec;
+
+   PrintPreviousCandleVolume();
+   ResetVolumeAtEveryCandle();
+
+// Every PERIOD secs request to remote source the real volume
+   if(currentSecond % PERIOD == 0 && currentSecond != lastRequestSecond)
+     {
+
+      // Guarantee that not too much volume requests are made
+      lastRequestSecond = currentSecond;
+
+      // Request parameters
+      string method = "GET";    // Request HTTP method
+      string headers = "";      // Request header
+      char data[];              // Body of the request
+      string jsonResponse;      // Response data received as a string
+
+      // Make the request to remote source
+      MqlDateTime now{};
+      TimeCurrent(now);
+      
+      string _url = StringFormat("%s/%s/%i/%i", URL, TV_SYMBOL, (now.hour + timezoneDiff), now.min);
+      Print("Request to: ", _url);
+      int status_code = RequestVolume(method,_url,headers,data,jsonResponse);
+
+      // Parse response as JSON accessible object
+      CJAVal response;
+      response.Deserialize(jsonResponse);
+      // Print("Original response: ", jsonResponse);
+
+      // Extract from JSON string the volume value
+      double newVol = response["data"].ToDbl();
+
+      // Accumulate the received volume with the previous one requested
+      double previousVol = GlobalVariableGet(GLOBAL_VOLUME_VARNAME);
+      GlobalVariableSet(GLOBAL_VOLUME_VARNAME, newVol);
+
+      Print("RESPONSE: ", jsonResponse);
+
+     } // if every PERIOD seconds
+  }
+//+------------------------------------------------------------------+
+//| Request volume to remote URL
+//+------------------------------------------------------------------+
+int RequestVolume(const string method, const string url, const string headers, char &data[], string &resp)
+  {
+   string cookie = NULL;
+   char result[];               // Data received as an array of type char
+   string result_headers;       // String with response headers
+   int timeout = 5000;
+   int dataSize = ArraySize(data);
+
+//--- Send a web request
+   int res = WebRequest(method, url, cookie, headers, timeout, data, dataSize, result, result_headers);
+
+//--- Check for errors
+   if(res == -1)
+     {
+      Print("Web request failed, error: ", GetLastError());
+     }
+   else
+     {
+      resp = CharArrayToString(result);
+     }
+
+   return res;
+  }
+//+------------------------------------------------------------------+
+//| Print the previous candle volume
+//+------------------------------------------------------------------+
+void PrintPreviousCandleVolume()
+{
+// Get current candle time
+   static datetime currentBarTime = iTime(_Symbol, _Period, 0);
+
+// Compare candle times
+   if(currentBarTime != lastBarTime)
+     {
+      // New candle started: DO SOMETHING  WITH THAT!
+      PrintFormat("Candle time: %s | Candle volume: %i",
+          TimeToString(currentBarTime - _Period),
+          GlobalVariableGet(GLOBAL_VOLUME_VARNAME));
+
+      // Update time of last candle
+      lastBarTime = currentBarTime;
+     }
+}
+//+------------------------------------------------------------------+
+//| Reset volume global variable at every new candle
+//+------------------------------------------------------------------+
+void ResetVolumeAtEveryCandle()
+  {
+// Reset volume at every new candle
+   static datetime previousCandleTime = 0;
+   datetime currentCandleTime = iTime(_Symbol, _Period, 0);
+// Check for new candle
+   if(currentCandleTime != previousCandleTime)
+     {
+      // Update stored time
+      previousCandleTime = currentCandleTime;
+      // Reset the volume global variable
+      GlobalVariableSet(GLOBAL_VOLUME_VARNAME, 0);
+     }
+  }
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
