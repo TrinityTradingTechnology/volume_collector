@@ -151,8 +151,8 @@ def get_latest_data(symbol, hour, minute):
     return resp, 200
 
 
-@app.route('/volume/M5/<symbol>', methods=['GET'])
-def get_5m_volume(symbol):
+@app.route('/volume/M5/<symbol>/<hour>/<minute>', methods=['GET'])
+def get_5m_volume(symbol, hour, minute):
     """
     Returns the sum of volume for the last five minutes
     """
@@ -169,19 +169,15 @@ def get_5m_volume(symbol):
     if symbol not in volumes:
         return jsonify({"status": "error", "message": f"Symbol '{symbol}' not found"}), 400
 
-    # Get current time
-    now = datetime.utcnow()
-
     # Adjust minute to the nearest multiple of 5
-    current_minute = (now.minute // 5) * 5
+    adjusted_minute = (minute // 5) * 5
 
     # Initialize sum
     sum_volume = 0
 
     # Iterate through the last five minutes divisible by 5
     for i in range(5):
-        minute = current_minute - (i * 5)
-        hour = now.hour
+        minute = adjusted_minute - (i * 5)
 
         # Handle edge cases where minute goes below 0 (previous hour)
         if minute < 0:
