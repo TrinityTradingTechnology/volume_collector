@@ -52,19 +52,31 @@ class TestGet5mVolume(unittest.TestCase):
         global volumes
         volumes = {}  # Reset volumes before each test
 
-    def print_minutes_range(self, hour, minute):
+    def debug_minutes_range(self, symbol, hour, minute):
+        """Helper method to debug the minutes range being checked"""
         current_minutes = hour * 60 + minute
         start_minutes = current_minutes - 5
-        
+
         if start_minutes < 0:
             start_minutes += 24 * 60
         
-        print(f"\nTesting time: {hour:02d}:{minute:02d}")
-        print("Minutes range being checked:")
+        print(f"\nTesting {symbol} at {hour:02d}:{minute:02d}")
+        print("Minutes range being checked (last 5 minutes):")
+
+        total_volume = 0
+        volumes_found = []
+
         for m in range(start_minutes, current_minutes):
             h = m // 60 % 24
             min = m % 60
-            print(f"  {h:02d}:{min:02d}")
+            vol = volumes.get(symbol, {}).get(h, {}).get(min, 0)
+            volumes_found.append((f"{h:02d}:{min:02d}", vol))
+            total_volume += vol
+
+        for time_vol in volumes_found:
+            print(f"  {time_vol[0]} - Volume: {time_vol[1]}")
+        
+        print(f"Total volume calculated: {total_volume}")
 
     def test_exact_five_minutes(self):
         global volumes
@@ -74,7 +86,7 @@ class TestGet5mVolume(unittest.TestCase):
             }
         }
 
-        self.print_minutes_range(12, 5)
+        self.debug_minutes_range('AAPL', 12, 5)
         result = get_5m_volume('AAPL', 12, 5)
         self.assertEqual(result, {
             "status": "success",
@@ -90,7 +102,7 @@ class TestGet5mVolume(unittest.TestCase):
             }
         }
         
-        self.print_minutes_range(13, 0)
+        self.debug_minutes_range('AAPL', 13, 0)
         result = get_5m_volume('AAPL', 13, 0)
         self.assertEqual(result, {
             "status": "success",
@@ -107,7 +119,7 @@ class TestGet5mVolume(unittest.TestCase):
             }
         }
         
-        self.print_minutes_range(0, 1)
+        self.debug_minutes_range('AAPL', 0, 1)
         result = get_5m_volume('AAPL', 0, 1)
         self.assertEqual(result, {
             "status": "success",
@@ -121,7 +133,7 @@ class TestGet5mVolume(unittest.TestCase):
             'AAPL': {}
         }
         
-        self.print_minutes_range(12, 30)
+        self.debug_minutes_range('AAPL', 12, 30)
         result = get_5m_volume('AAPL', 12, 30)
         self.assertEqual(result, {
             "status": "success",
@@ -133,7 +145,7 @@ class TestGet5mVolume(unittest.TestCase):
         global volumes
         volumes = {}
         
-        self.print_minutes_range(12, 30)
+        self.debug_minutes_range('AAPL', 12, 30)
         result = get_5m_volume('AAPL', 12, 30)
         self.assertEqual(result, {
             "status": "success",
