@@ -151,6 +151,11 @@ def get_latest_data(symbol, hour, minute):
     return resp, 200
 
 
+@app.route('/test', methods=['GET'])
+def get_latest_data():
+    return jsonify({"status": "OK"})
+
+
 if __name__ == '__main__':
     # Run the server on port 5000 (or any other port you prefer)
     assemble_volume_dict()
