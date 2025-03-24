@@ -151,7 +151,7 @@ def get_latest_data(symbol, hour, minute):
     return resp, 200
 
 
-@app.route('/5m/volume/<symbol>', methods=['GET'])
+@app.route('/M5/volume/<symbol>', methods=['GET'])
 def get_5m_volume(symbol):
     """
     Returns the sum of volume for the last five minutes
