@@ -169,25 +169,34 @@ def get_5m_volume(symbol, hour, minute):
     if symbol not in volumes:
         return jsonify({"status": "error", "message": f"Symbol '{symbol}' not found"}), 400
 
-    # Adjust minute to the nearest multiple of 5
-    adjusted_minute = (int(minute) // 5) * 5
+    # Convert time to minutes since midnight
+    current_minutes = hour * 60 + minute
+
+    # Calculate start time (5 minutes ago)
+    start_minutes = current_minutes - 5
 
     # Initialize sum
     sum_volume = 0
 
-    # Iterate through the last five minutes divisible by 5
-    for i in range(5):
-        minute = adjusted_minute - (i * 5)
-
-        # Handle edge cases where minute goes below 0 (previous hour)
-        if minute < 0:
-            minute += 60
-            hour -= 1
-            if hour < 0:
-                hour += 24
-
-        # Add volume to sum
-        sum_volume += volumes[symbol].get(hour, {}).get(minute, 0)
+    # Handle both normal case and midnight wrap-around
+    if start_minutes >= 0:
+        # Normal case - no midnight crossing
+        for m in range(start_minutes, current_minutes):
+            h = m // 60
+            min = m % 60
+            sum_volume += volumes.get(symbol, {}).get(h, {}).get(min, 0)
+    else:
+        # Midnight crossing - handle two segments
+        # First segment: from start_minutes (negative) to midnight (1440 minutes)
+        for m in range(start_minutes + 1440, 1440):
+            h = m // 60
+            min = m % 60
+            sum_volume += volumes.get(symbol, {}).get(h, {}).get(min, 0)
+        # Second segment: from midnight (0) to current_minutes
+        for m in range(0, current_minutes):
+            h = m // 60
+            min = m % 60
+            sum_volume += volumes.get(symbol, {}).get(h, {}).get(min, 0)
 
     return jsonify({
         "status": "success",
