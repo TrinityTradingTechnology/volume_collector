@@ -152,7 +152,7 @@ def get_latest_data(symbol, hour, minute):
 
 
 @app.route('/test', methods=['GET'])
-def get_latest_data():
+def test():
     return jsonify({"status": "OK"})
 
 
