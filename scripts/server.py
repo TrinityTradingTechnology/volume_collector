@@ -170,7 +170,7 @@ def get_5m_volume(symbol, hour, minute):
         return jsonify({"status": "error", "message": f"Symbol '{symbol}' not found"}), 400
 
     # Adjust minute to the nearest multiple of 5
-    adjusted_minute = (minute // 5) * 5
+    adjusted_minute = (int(minute) // 5) * 5
 
     # Initialize sum
     sum_volume = 0
