@@ -151,6 +151,55 @@ def get_latest_data(symbol, hour, minute):
     return resp, 200
 
 
+@app.route('/5m/volume/<symbol>', methods=['GET'])
+def get_5m_volume(symbol):
+    """
+    Returns the sum of volume for the last five minutes
+    """
+    global volumes
+
+    # Validate request
+    local_request = is_local_request(request)
+    valid_token = validate_token(request)
+
+    if not local_request and not valid_token:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+
+    # Check if the symbol exists in the volumes dictionary
+    if symbol not in volumes:
+        return jsonify({"status": "error", "message": f"Symbol '{symbol}' not found"}), 400
+
+    # Get current time
+    now = datetime.utcnow()
+
+    # Adjust minute to the nearest multiple of 5
+    current_minute = (now.minute // 5) * 5
+
+    # Initialize sum
+    sum_volume = 0
+
+    # Iterate through the last five minutes divisible by 5
+    for i in range(5):
+        minute = current_minute - (i * 5)
+        hour = now.hour
+
+        # Handle edge cases where minute goes below 0 (previous hour)
+        if minute < 0:
+            minute += 60
+            hour -= 1
+            if hour < 0:
+                hour += 24
+
+        # Add volume to sum
+        sum_volume += volumes[symbol].get(hour, {}).get(minute, 0)
+
+    return jsonify({
+        "status": "success",
+        "symbol": symbol,
+        "volume": sum_volume
+    }), 200
+
+
 @app.route('/test', methods=['GET'])
 def test():
     return jsonify({"status": "OK"})
