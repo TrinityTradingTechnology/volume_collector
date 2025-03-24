@@ -182,21 +182,21 @@ def get_5m_volume(symbol, hour, minute):
     if start_minutes >= 0:
         # Normal case - no midnight crossing
         for m in range(start_minutes, current_minutes):
-            h = m // 60
-            min = m % 60
-            sum_volume += volumes.get(symbol, {}).get(h, {}).get(min, 0)
+            _hour = m // 60
+            _min = m % 60
+            sum_volume += volumes.get(symbol, {}).get(_hour, {}).get(_min, 0)
     else:
         # Midnight crossing - handle two segments
         # First segment: from start_minutes (negative) to midnight (1440 minutes)
         for m in range(start_minutes + 1440, 1440):
-            h = m // 60
-            min = m % 60
-            sum_volume += volumes.get(symbol, {}).get(h, {}).get(min, 0)
+            _hour = m // 60
+            _min = m % 60
+            sum_volume += volumes.get(symbol, {}).get(_hour, {}).get(_min, 0)
         # Second segment: from midnight (0) to current_minutes
         for m in range(0, current_minutes):
-            h = m // 60
-            min = m % 60
-            sum_volume += volumes.get(symbol, {}).get(h, {}).get(min, 0)
+            _hour = m // 60
+            _min = m % 60
+            sum_volume += volumes.get(symbol, {}).get(_hour, {}).get(_min, 0)
 
     return jsonify({
         "status": "success",
