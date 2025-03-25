@@ -8,10 +8,13 @@
 #property copyright "Trinity Tech"
 #property link      "https://trinity.tech"
 #property version   "1.00"
+
 //--- input parameters
 input string   URL = "http://127.0.0.1/volume";
+input string   SECURITY_TOKEN = "";
 input int      PERIOD = 15;
 input string   TV_SYMBOL = "NDX";
+
 //--- variables
 const string GLOBAL_VOLUME_VARNAME = "_g_volume";
 datetime lastBarTime = 0;
@@ -67,8 +70,10 @@ void OnTick()
       MqlDateTime now{};
       TimeCurrent(now);
       
-      string _url = StringFormat("%s/%s/%i/%i", URL, TV_SYMBOL, (now.hour + timezoneDiff), now.min);
+      string _url = StringFormat("%s/%s/%i/%i?token=%s", 
+          URL, TV_SYMBOL, (now.hour + timezoneDiff), now.min, SECURITY_TOKEN);
       Print("Request to: ", _url);
+
       int status_code = RequestVolume(method,_url,headers,data,jsonResponse);
 
       // Parse response as JSON accessible object
@@ -139,16 +144,38 @@ void PrintPreviousCandleVolume()
 void ResetVolumeAtEveryCandle()
   {
 // Reset volume at every new candle
-   static datetime previousCandleTime = 0;
-   datetime currentCandleTime = iTime(_Symbol, _Period, 0);
-// Check for new candle
-   if(currentCandleTime != previousCandleTime)
+   if(IsNewBar())
      {
-      // Update stored time
-      previousCandleTime = currentCandleTime;
       // Reset the volume global variable
       GlobalVariableSet(GLOBAL_VOLUME_VARNAME, 0);
      }
   }
 //+------------------------------------------------------------------+
+bool IsNewBar()
+  {
+// Memorize the time of opening of the last bar in the static variable
+   static datetime _last_time = 0;
+
+// Current time
+   datetime lastbar_time = (datetime)SeriesInfoInteger(Symbol(), Period(), SERIES_LASTBAR_DATE);
+
+// If it is the first call of the function
+   if(_last_time == 0)
+     {
+      // Set the time and exit
+      _last_time = lastbar_time;
+      return(false);
+     }
+
+// If the time differs
+   if(_last_time != lastbar_time)
+     {
+      // Memorize the time and return true
+      _last_time = lastbar_time;
+      return(true);
+     }
+
+// If we passed to this line, then the bar is not new
+   return(false);
+  }
 //+------------------------------------------------------------------+
