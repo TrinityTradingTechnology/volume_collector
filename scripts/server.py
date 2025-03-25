@@ -151,6 +151,11 @@ def get_latest_data(symbol, hour, minute):
     return resp, 200
 
 
+@app.route('/volume/M1/<symbol>/<hour>/<minute>', methods=['GET'])
+def get_1m_volume(symbol, hour, minute):
+    return get_latest_data(symbol, hour, minute)
+
+
 @app.route('/volume/M5/<symbol>/<hour>/<minute>', methods=['GET'])
 def get_5m_volume(symbol, hour, minute):
     """
