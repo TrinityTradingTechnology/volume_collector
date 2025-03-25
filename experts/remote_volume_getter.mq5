@@ -19,7 +19,6 @@ input string   TV_SYMBOL = "NDX";
 const string GLOBAL_VOLUME_VARNAME = "_g_volume";
 datetime lastBarTime = 0;
 int lastRequestSecond = -1; // For tracking last second when a request was done
-int timezoneDiff = 3;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -46,7 +45,7 @@ void OnTick()
 
 // Struct for handling requests time sync
    MqlDateTime lastTimeStruct;
-   TimeToStruct(TimeCurrent(), lastTimeStruct);
+   TimeToStruct(TimeLocal(), lastTimeStruct);
 
    int currentSecond = lastTimeStruct.sec;
 
@@ -68,10 +67,10 @@ void OnTick()
 
       // Make the request to remote source
       MqlDateTime now{};
-      TimeCurrent(now);
+      TimeLocal(now);
       
       string _url = StringFormat("%s/%s/%i/%i?token=%s", 
-          URL, TV_SYMBOL, (now.hour + timezoneDiff), now.min, SECURITY_TOKEN);
+          URL, TV_SYMBOL, now.hour, now.min, SECURITY_TOKEN);
       Print("Request to: ", _url);
 
       int status_code = RequestVolume(method,_url,headers,data,jsonResponse);
