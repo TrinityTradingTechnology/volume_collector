@@ -49,9 +49,6 @@ int OnCalculate(const int rates_total,
    
    static int bufferResetCount = 0;
 
-   MqlDateTime lastTimeStruct;
-   TimeToStruct(TimeCurrent(), lastTimeStruct);
-
 // Avoid some garbage data that sometimes populate empty arrays
    if(bufferResetCount == 0)
    {
@@ -59,12 +56,8 @@ int OnCalculate(const int rates_total,
       ArrayInitialize(VolumeBuffer, 0);
    }
 
-// Every 1 secs update the volume histogram graph
-   if (lastTimeStruct.sec != lastRequestSecond) {
-      lastRequestSecond = lastTimeStruct.sec;
-      if (GlobalVariableCheck(GLOBAL_VOLUME_VARNAME)) {
-         VolumeBuffer[0] = GlobalVariableGet(GLOBAL_VOLUME_VARNAME);
-      }
+   if (GlobalVariableCheck(GLOBAL_VOLUME_VARNAME)) {
+      VolumeBuffer[0] = GlobalVariableGet(GLOBAL_VOLUME_VARNAME);
    }
 
    return(rates_total);
