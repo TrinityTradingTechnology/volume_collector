@@ -175,10 +175,10 @@ def get_5m_volume(symbol, hour, minute):
         return jsonify({"status": "error", "message": f"Symbol '{symbol}' not found"}), 400
 
     # Convert time to minutes since midnight
-    current_minutes = hour * 60 + minute
+    current_minutes = int(hour) * 60 + int(minute)
 
     # Calculate start time (5 minutes ago)
-    start_minutes = current_minutes - 5
+    start_minutes = int(current_minutes) - 5
 
     # Initialize sum
     sum_volume = 0
