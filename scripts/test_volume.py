@@ -3,42 +3,34 @@ import unittest
 
 volumes = dict()
 
-
-# Function to test
 def get_5m_volume(symbol, hour, minute):
     """
-    Returns the sum of volume for the last five minutes
+    Returns the sum of volume for the current 5-minute window
+    (where window boundaries are aligned to minutes divisible by 5)
     """
     global volumes  # Declare volumes as a global variable
 
-    # Convert time to minutes since midnight
-    current_minutes = hour * 60 + minute
-
-    # Calculate start time (5 minutes ago)
-    start_minutes = current_minutes - 5
+    # Calculate the starting minute of the current 5-minute window
+    window_start_minute = (minute // 5) * 5
+    window_end_minute = window_start_minute + 4
 
     # Initialize sum
     sum_volume = 0
 
-    # Handle both normal case and midnight wrap-around
-    if start_minutes >= 0:
-        # Normal case - no midnight crossing
-        for m in range(start_minutes, current_minutes):
-            h = m // 60
-            min = m % 60
-            sum_volume += volumes.get(symbol, {}).get(h, {}).get(min, 0)
-    else:
-        # Midnight crossing - handle two segments
-        # First segment: from start_minutes (negative) to midnight (1440 minutes)
-        for m in range(start_minutes + 1440, 1440):
-            h = m // 60
-            min = m % 60
-            sum_volume += volumes.get(symbol, {}).get(h, {}).get(min, 0)
-        # Second segment: from midnight (0) to current_minutes
-        for m in range(0, current_minutes):
-            h = m // 60
-            min = m % 60
-            sum_volume += volumes.get(symbol, {}).get(h, {}).get(min, 0)
+    # Iterate through each minute in the 5-minute window
+    for current_min in range(window_start_minute, window_end_minute + 1):
+        current_hour = hour
+        
+        # Handle minute overflow (if window_end_minute >= 60)
+        if current_min >= 60:
+            adjusted_min = current_min - 60
+            adjusted_hour = current_hour + 1
+            # Handle hour overflow
+            if adjusted_hour >= 24:
+                adjusted_hour -= 24
+            sum_volume += volumes.get(symbol, {}).get(adjusted_hour, {}).get(adjusted_min, 0)
+        else:
+            sum_volume += volumes.get(symbol, {}).get(current_hour, {}).get(current_min, 0)
 
     return {
         "status": "success",
@@ -46,47 +38,21 @@ def get_5m_volume(symbol, hour, minute):
         "volume": sum_volume
     }
 
+
 # Unit tests
 class TestGet5mVolume(unittest.TestCase):
     def setUp(self):
         global volumes
         volumes = {}  # Reset volumes before each test
 
-    def debug_minutes_range(self, symbol, hour, minute):
-        """Helper method to debug the minutes range being checked"""
-        current_minutes = hour * 60 + minute
-        start_minutes = current_minutes - 5
-
-        if start_minutes < 0:
-            start_minutes += 24 * 60
-        
-        print(f"\nTesting {symbol} at {hour:02d}:{minute:02d}")
-        print("Minutes range being checked (last 5 minutes):")
-
-        total_volume = 0
-        volumes_found = []
-
-        for m in range(start_minutes, current_minutes):
-            h = m // 60 % 24
-            min = m % 60
-            vol = volumes.get(symbol, {}).get(h, {}).get(min, 0)
-            volumes_found.append((f"{h:02d}:{min:02d}", vol))
-            total_volume += vol
-
-        for time_vol in volumes_found:
-            print(f"  {time_vol[0]} - Volume: {time_vol[1]}")
-        
-        print(f"Total volume calculated: {total_volume}")
-
     def test_exact_five_minutes(self):
         global volumes
         volumes = {
             'AAPL': {
-                12: {0: 100, 1: 200, 2: 300, 3: 400, 4: 500}
+                12: {5: 100, 6: 200, 7: 300, 8: 400, 9: 500}
             }
         }
 
-        self.debug_minutes_range('AAPL', 12, 5)
         result = get_5m_volume('AAPL', 12, 5)
         self.assertEqual(result, {
             "status": "success",
@@ -98,11 +64,10 @@ class TestGet5mVolume(unittest.TestCase):
         global volumes
         volumes = {
             'AAPL': {
-                12: {55: 100, 56: 200, 57: 300, 58: 400, 59: 500}
+                13: {0: 100, 1: 200, 2: 300, 3: 400, 4: 500}
             }
         }
         
-        self.debug_minutes_range('AAPL', 13, 0)
         result = get_5m_volume('AAPL', 13, 0)
         self.assertEqual(result, {
             "status": "success",
@@ -115,16 +80,15 @@ class TestGet5mVolume(unittest.TestCase):
         volumes = {
             'AAPL': {
                 23: {55: 100, 56: 200, 57: 300, 58: 400, 59: 500},
-                0: {0: 600}
+                0: {0: 600, 1: 200, 2: 200}
             }
         }
         
-        self.debug_minutes_range('AAPL', 0, 1)
         result = get_5m_volume('AAPL', 0, 1)
         self.assertEqual(result, {
             "status": "success",
             "symbol": "AAPL",
-            "volume": 2000
+            "volume": 1000
         })
 
     def test_missing_data(self):
@@ -133,7 +97,6 @@ class TestGet5mVolume(unittest.TestCase):
             'AAPL': {}
         }
         
-        self.debug_minutes_range('AAPL', 12, 30)
         result = get_5m_volume('AAPL', 12, 30)
         self.assertEqual(result, {
             "status": "success",
@@ -145,7 +108,6 @@ class TestGet5mVolume(unittest.TestCase):
         global volumes
         volumes = {}
         
-        self.debug_minutes_range('AAPL', 12, 30)
         result = get_5m_volume('AAPL', 12, 30)
         self.assertEqual(result, {
             "status": "success",
