@@ -174,34 +174,27 @@ def get_5m_volume(symbol, hour, minute):
     if symbol not in volumes:
         return jsonify({"status": "error", "message": f"Symbol '{symbol}' not found"}), 400
 
-    # Convert time to minutes since midnight
-    current_minutes = int(hour) * 60 + int(minute)
-
-    # Calculate start time (5 minutes ago)
-    start_minutes = int(current_minutes) - 5
+    # Calculate the starting minute of the current 5-minute window
+    window_start_minute = (int(minute) // 5) * 5
+    window_end_minute = window_start_minute + 4
 
     # Initialize sum
     sum_volume = 0
 
-    # Handle both normal case and midnight wrap-around
-    if start_minutes >= 0:
-        # Normal case - no midnight crossing
-        for m in range(start_minutes, current_minutes):
-            _hour = m // 60
-            _min = m % 60
-            sum_volume += volumes.get(symbol, {}).get(_hour, {}).get(_min, 0)
-    else:
-        # Midnight crossing - handle two segments
-        # First segment: from start_minutes (negative) to midnight (1440 minutes)
-        for m in range(start_minutes + 1440, 1440):
-            _hour = m // 60
-            _min = m % 60
-            sum_volume += volumes.get(symbol, {}).get(_hour, {}).get(_min, 0)
-        # Second segment: from midnight (0) to current_minutes
-        for m in range(0, current_minutes):
-            _hour = m // 60
-            _min = m % 60
-            sum_volume += volumes.get(symbol, {}).get(_hour, {}).get(_min, 0)
+    # Iterate through each minute in the 5-minute window
+    for current_min in range(window_start_minute, window_end_minute + 1):
+        current_hour = int(hour)
+        
+        # Handle minute overflow (if window_end_minute >= 60)
+        if current_min >= 60:
+            adjusted_min = current_min - 60
+            adjusted_hour = current_hour + 1
+            # Handle hour overflow
+            if adjusted_hour >= 24:
+                adjusted_hour -= 24
+            sum_volume += volumes.get(symbol, {}).get(adjusted_hour, {}).get(adjusted_min, 0)
+        else:
+            sum_volume += volumes.get(symbol, {}).get(current_hour, {}).get(current_min, 0)
 
     return jsonify({
         "status": "success",
