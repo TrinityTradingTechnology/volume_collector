@@ -150,7 +150,7 @@ void ResetVolumeAtEveryCandle()
    if(IsNewBar())
      {
       Print("isNewBar Waiting");
-      Sleep(1500);
+      Sleep(3500);
       // get latest volume
       CollectRemoteVolumeAndUpdateGlobalVariable(true);
       // Set the last volume
