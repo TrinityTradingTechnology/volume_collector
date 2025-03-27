@@ -60,12 +60,12 @@ int OnCalculate(const int rates_total,
       ArrayInitialize(VolumeBuffer, 0);
    }
 
+
    if (GlobalVariableCheck(CURRENT_VOLUME)) {
       VolumeBuffer[0] = GlobalVariableGet(CURRENT_VOLUME);
-   }
-   
-   if (IsNewBar()) {
-      VolumeBuffer[1] = GlobalVariableGet(LAST_VOLUME);
+      double temp = GlobalVariableGet(LAST_VOLUME);
+      if (VolumeBuffer[1] != temp)
+         VolumeBuffer[1] = temp;
    }
 
    return(rates_total);
