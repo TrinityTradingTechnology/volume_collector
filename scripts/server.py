@@ -145,7 +145,7 @@ def get_latest_data(symbol, hour, minute):
     data = volumes[symbol][int(hour)][int(minute)]
     resp = jsonify({"status": "success", "data": data})
 
-    app.logger.info(data)
+    app.logger.info(f"Returned data: {data}")
 
     # Return the latest data
     return resp, 200
