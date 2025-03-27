@@ -59,7 +59,7 @@ def set_ticker_volume(ticker, hour, minute, second, volume):
             minute = 59
         minute -= 1
     volumes[ticker][hour][int(minute)] += int(volume) 
-    app.logger.info(f"Updated: volumes[{ticker}][{hour}][{minute}] = {volume}")
+    app.logger.info(f"Updated: volumes['{ticker}']['{hour}']['{minute}']['{second}'] = {volume}")
 
 
 @app.route('/volume', methods=['POST'])
