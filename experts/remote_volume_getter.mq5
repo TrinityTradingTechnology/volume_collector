@@ -19,6 +19,7 @@ input int      TIMEZONE_OFFSET = 3;
 //--- variables
 const string CURRENT_VOLUME = "_g_volume";
 const string LAST_VOLUME = "_g_last_volume";
+
 datetime lastBarTime = 0;
 int lastRequestSecond = -1; // For tracking last second when a request was done
 
@@ -32,6 +33,7 @@ int OnInit()
 
 // Init the global volume variable
    GlobalVariableSet(CURRENT_VOLUME, 0);
+   GlobalVariableSet(LAST_VOLUME, 0);
 
    Print("Period: ", _Period);
    Print("Getting volume from: ", URL);
@@ -60,8 +62,6 @@ void OnTimer(void)
 void CollectRemoteVolumeAndUpdateGlobalVariable(bool lastMin = false)
   {
 
-   PrintPreviousCandleVolume();
-
    // Request parameters
    string method = "GET";    // Request HTTP method
    string headers = "";      // Request header
@@ -72,12 +72,12 @@ void CollectRemoteVolumeAndUpdateGlobalVariable(bool lastMin = false)
    MqlDateTime now{};
    TimeCurrent(now);
 
-   int min = now.min;
+   int minute = now.min;
    if (lastMin)
-      min = now.min - 1;
+      minute = now.min - 1;
 
    string _url = StringFormat("%s/%s/%i/%i?token=%s",
-       URL, TV_SYMBOL, now.hour + TIMEZONE_OFFSET, now.min, SECURITY_TOKEN);
+       URL, TV_SYMBOL, now.hour + TIMEZONE_OFFSET, minute, SECURITY_TOKEN);
    Print("Request to: ", _url);
 
    int status_code = RequestVolume(method,_url,headers,data,jsonResponse);
@@ -90,8 +90,7 @@ void CollectRemoteVolumeAndUpdateGlobalVariable(bool lastMin = false)
    // Extract from JSON string the volume value
    double newVol = response["data"].ToDbl();
 
-   // Accumulate the received volume with the previous one requested
-   double currentVol = GlobalVariableGet(CURRENT_VOLUME);
+   // Set Current Volume
    GlobalVariableSet(CURRENT_VOLUME, newVol);
 
    Print("RESPONSE: ", jsonResponse);
@@ -150,12 +149,14 @@ void ResetVolumeAtEveryCandle()
 // Reset volume at every new candle
    if(IsNewBar())
      {
-      Sleep(3000);
+      Print("isNewBar Waiting");
+      Sleep(1500);
       // get latest volume
       CollectRemoteVolumeAndUpdateGlobalVariable(true);
       // Set the last volume
       double temp = GlobalVariableGet(CURRENT_VOLUME);
       GlobalVariableSet(LAST_VOLUME, temp);
+      Print("isNewBar LastVolume ", temp);
       // Reset the current volume global variable
       GlobalVariableSet(CURRENT_VOLUME, 0);
      }
