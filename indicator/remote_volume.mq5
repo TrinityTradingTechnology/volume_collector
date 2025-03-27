@@ -21,7 +21,8 @@
 double         VolumeBuffer[];
 
 //--- variables
-const string GLOBAL_VOLUME_VARNAME = "_g_volume";
+const string CURRENT_VOLUME = "_g_volume";
+const string LAST_VOLUME = "_g_last_volume";
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
@@ -59,10 +60,42 @@ int OnCalculate(const int rates_total,
       ArrayInitialize(VolumeBuffer, 0);
    }
 
-   if (GlobalVariableCheck(GLOBAL_VOLUME_VARNAME)) {
-      VolumeBuffer[0] = GlobalVariableGet(GLOBAL_VOLUME_VARNAME);
+   if (GlobalVariableCheck(CURRENT_VOLUME)) {
+      VolumeBuffer[0] = GlobalVariableGet(CURRENT_VOLUME);
+   }
+   
+   if (IsNewBar()) {
+      VolumeBuffer[1] = GlobalVariableGet(LAST_VOLUME);
    }
 
    return(rates_total);
+  }
+
+bool IsNewBar()
+  {
+// Memorize the time of opening of the last bar in the static variable
+   static datetime _last_time = 0;
+
+// Current time
+   datetime lastbar_time = (datetime)SeriesInfoInteger(Symbol(), Period(), SERIES_LASTBAR_DATE);
+
+// If it is the first call of the function
+   if(_last_time == 0)
+     {
+      // Set the time and exit
+      _last_time = lastbar_time;
+      return(false);
+     }
+
+// If the time differs
+   if(_last_time != lastbar_time)
+     {
+      // Memorize the time and return true
+      _last_time = lastbar_time;
+      return(true);
+     }
+
+// If we passed to this line, then the bar is not new
+   return(false);
   }
 //+------------------------------------------------------------------+
