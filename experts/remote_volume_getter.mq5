@@ -14,6 +14,7 @@ input string   URL = "http://127.0.0.1/volume";
 input string   SECURITY_TOKEN = "";
 input int      PERIOD = 15;
 input string   TV_SYMBOL = "NDX";
+input int      TIMEZONE_OFFSET = 3;
 
 //--- variables
 const string GLOBAL_VOLUME_VARNAME = "_g_volume";
@@ -26,7 +27,7 @@ int lastRequestSecond = -1; // For tracking last second when a request was done
 int OnInit()
   {
 //--- create timer
-   EventSetTimer(60);
+   EventSetTimer(1);
 
 // Init the global volume variable
    GlobalVariableSet(GLOBAL_VOLUME_VARNAME, 0);
@@ -38,58 +39,57 @@ int OnInit()
    return(INIT_SUCCEEDED);
   }
 //+------------------------------------------------------------------+
-//| Expert tick function                                             |
+//| Expert timer function                                            |
 //+------------------------------------------------------------------+
-void OnTick()
+void OnTimer(void)
   {
-
-// Struct for handling requests time sync
    MqlDateTime lastTimeStruct;
-   TimeToStruct(TimeLocal(), lastTimeStruct);
-
+   TimeToStruct(TimeCurrent(), lastTimeStruct);
    int currentSecond = lastTimeStruct.sec;
+
+   if (currentSecond % PERIOD == 0) {
+      Print("OnTimer: ", TimeCurrent());
+      CollectRemoteVolumeAndUpdateGlobalVariable();
+   }
+  }
+//+------------------------------------------------------------------+
+//| Collect the remote volume and update global variable             |
+//+------------------------------------------------------------------+
+void CollectRemoteVolumeAndUpdateGlobalVariable()
+  {
 
    PrintPreviousCandleVolume();
    ResetVolumeAtEveryCandle();
 
-// Every PERIOD secs request to remote source the real volume
-   if(currentSecond % PERIOD == 0 && currentSecond != lastRequestSecond)
-     {
+   // Request parameters
+   string method = "GET";    // Request HTTP method
+   string headers = "";      // Request header
+   char data[];              // Body of the request
+   string jsonResponse;      // Response data received as a string
 
-      // Guarantee that not too much volume requests are made
-      lastRequestSecond = currentSecond;
+   // Make the request to remote source
+   MqlDateTime now{};
+   TimeCurrent(now);
 
-      // Request parameters
-      string method = "GET";    // Request HTTP method
-      string headers = "";      // Request header
-      char data[];              // Body of the request
-      string jsonResponse;      // Response data received as a string
+   string _url = StringFormat("%s/%s/%i/%i?token=%s",
+       URL, TV_SYMBOL, now.hour + TIMEZONE_OFFSET, now.min, SECURITY_TOKEN);
+   Print("Request to: ", _url);
 
-      // Make the request to remote source
-      MqlDateTime now{};
-      TimeLocal(now);
-      
-      string _url = StringFormat("%s/%s/%i/%i?token=%s", 
-          URL, TV_SYMBOL, now.hour, now.min, SECURITY_TOKEN);
-      Print("Request to: ", _url);
+   int status_code = RequestVolume(method,_url,headers,data,jsonResponse);
 
-      int status_code = RequestVolume(method,_url,headers,data,jsonResponse);
+   // Parse response as JSON accessible object
+   CJAVal response;
+   response.Deserialize(jsonResponse);
+   // Print("Original response: ", jsonResponse);
 
-      // Parse response as JSON accessible object
-      CJAVal response;
-      response.Deserialize(jsonResponse);
-      // Print("Original response: ", jsonResponse);
+   // Extract from JSON string the volume value
+   double newVol = response["data"].ToDbl();
 
-      // Extract from JSON string the volume value
-      double newVol = response["data"].ToDbl();
+   // Accumulate the received volume with the previous one requested
+   double previousVol = GlobalVariableGet(GLOBAL_VOLUME_VARNAME);
+   GlobalVariableSet(GLOBAL_VOLUME_VARNAME, newVol);
 
-      // Accumulate the received volume with the previous one requested
-      double previousVol = GlobalVariableGet(GLOBAL_VOLUME_VARNAME);
-      GlobalVariableSet(GLOBAL_VOLUME_VARNAME, newVol);
-
-      Print("RESPONSE: ", jsonResponse);
-
-     } // if every PERIOD seconds
+   Print("RESPONSE: ", jsonResponse);
   }
 //+------------------------------------------------------------------+
 //| Request volume to remote URL
