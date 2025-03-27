@@ -17,7 +17,8 @@ input string   TV_SYMBOL = "NDX";
 input int      TIMEZONE_OFFSET = 3;
 
 //--- variables
-const string GLOBAL_VOLUME_VARNAME = "_g_volume";
+const string CURRENT_VOLUME = "_g_volume";
+const string LAST_VOLUME = "_g_last_volume";
 datetime lastBarTime = 0;
 int lastRequestSecond = -1; // For tracking last second when a request was done
 
@@ -30,7 +31,7 @@ int OnInit()
    EventSetTimer(1);
 
 // Init the global volume variable
-   GlobalVariableSet(GLOBAL_VOLUME_VARNAME, 0);
+   GlobalVariableSet(CURRENT_VOLUME, 0);
 
    Print("Period: ", _Period);
    Print("Getting volume from: ", URL);
@@ -49,17 +50,17 @@ void OnTimer(void)
 
    if (currentSecond % PERIOD == 0) {
       Print("OnTimer: ", TimeCurrent());
+      ResetVolumeAtEveryCandle();
       CollectRemoteVolumeAndUpdateGlobalVariable();
    }
   }
 //+------------------------------------------------------------------+
 //| Collect the remote volume and update global variable             |
 //+------------------------------------------------------------------+
-void CollectRemoteVolumeAndUpdateGlobalVariable()
+void CollectRemoteVolumeAndUpdateGlobalVariable(bool lastMin = false)
   {
 
    PrintPreviousCandleVolume();
-   ResetVolumeAtEveryCandle();
 
    // Request parameters
    string method = "GET";    // Request HTTP method
@@ -70,6 +71,10 @@ void CollectRemoteVolumeAndUpdateGlobalVariable()
    // Make the request to remote source
    MqlDateTime now{};
    TimeCurrent(now);
+
+   int min = now.min;
+   if (lastMin)
+      min = now.min - 1;
 
    string _url = StringFormat("%s/%s/%i/%i?token=%s",
        URL, TV_SYMBOL, now.hour + TIMEZONE_OFFSET, now.min, SECURITY_TOKEN);
@@ -86,8 +91,8 @@ void CollectRemoteVolumeAndUpdateGlobalVariable()
    double newVol = response["data"].ToDbl();
 
    // Accumulate the received volume with the previous one requested
-   double previousVol = GlobalVariableGet(GLOBAL_VOLUME_VARNAME);
-   GlobalVariableSet(GLOBAL_VOLUME_VARNAME, newVol);
+   double currentVol = GlobalVariableGet(CURRENT_VOLUME);
+   GlobalVariableSet(CURRENT_VOLUME, newVol);
 
    Print("RESPONSE: ", jsonResponse);
   }
@@ -131,7 +136,7 @@ void PrintPreviousCandleVolume()
       // New candle started: DO SOMETHING  WITH THAT!
       PrintFormat("Candle time: %s | Candle volume: %i",
           TimeToString(currentBarTime - _Period),
-          GlobalVariableGet(GLOBAL_VOLUME_VARNAME));
+          GlobalVariableGet(CURRENT_VOLUME));
 
       // Update time of last candle
       lastBarTime = currentBarTime;
@@ -145,8 +150,14 @@ void ResetVolumeAtEveryCandle()
 // Reset volume at every new candle
    if(IsNewBar())
      {
-      // Reset the volume global variable
-      GlobalVariableSet(GLOBAL_VOLUME_VARNAME, 0);
+      Sleep(3000);
+      // get latest volume
+      CollectRemoteVolumeAndUpdateGlobalVariable(true);
+      // Set the last volume
+      double temp = GlobalVariableGet(CURRENT_VOLUME);
+      GlobalVariableSet(LAST_VOLUME, temp);
+      // Reset the current volume global variable
+      GlobalVariableSet(CURRENT_VOLUME, 0);
      }
   }
 //+------------------------------------------------------------------+
