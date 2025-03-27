@@ -149,14 +149,14 @@ void ResetVolumeAtEveryCandle()
 // Reset volume at every new candle
    if(IsNewBar())
      {
-      Print("isNewBar Waiting");
+      Print("IsNewBar: waiting...");
       Sleep(3500);
       // get latest volume
       CollectRemoteVolumeAndUpdateGlobalVariable(true);
       // Set the last volume
       double temp = GlobalVariableGet(CURRENT_VOLUME);
       GlobalVariableSet(LAST_VOLUME, temp);
-      Print("isNewBar LastVolume ", temp);
+      Print("IsNewBar last volume: ", temp);
       // Reset the current volume global variable
       GlobalVariableSet(CURRENT_VOLUME, 0);
      }
