@@ -31,6 +31,9 @@ int OnInit()
   {
 //--- indicator buffers mapping
    SetIndexBuffer(0,VolumeBuffer,INDICATOR_DATA);
+   IndicatorSetString(INDICATOR_SHORTNAME, StringFormat("Remote %s Volume: ", _Symbol));
+   IndicatorSetInteger(INDICATOR_DIGITS, 0); // Set display digits to 0
+
    ArraySetAsSeries(VolumeBuffer, true);
 //---
    return(INIT_SUCCEEDED);
